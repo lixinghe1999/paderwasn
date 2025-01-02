@@ -34,3 +34,15 @@ def get_sn_dists(scenario, key='estimates'):
     assert key in scenario['observations'].keys()
     assert ('sn_distances' in scenario['observations'][key].keys())
     return np.asarray(scenario['observations'][key]['sn_distances'])
+
+def get_translations(scenario, key='estimates'):
+    assert 'observations' in scenario.keys()
+    assert key in scenario['observations'].keys()
+    assert ('translations' in scenario['observations'][key].keys())
+    return np.asarray(scenario['observations'][key]['translations'])
+
+def get_rotations(scenario, key='estimates'):
+    assert 'observations' in scenario.keys()
+    assert key in scenario['observations'].keys()
+    assert ('rotations' in scenario['observations'][key].keys())
+    return np.asarray(scenario['observations'][key]['rotations'])
