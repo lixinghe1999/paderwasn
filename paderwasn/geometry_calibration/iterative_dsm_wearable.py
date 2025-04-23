@@ -26,7 +26,7 @@ def calculate_azimuth_distance(distance_y, azimuth_y, translation, rotation):
 
     return distance_z_to_y, azimuth_z_to_y
 
-def get_rel_src_pos(doas, dists, translations=None, rotations=None):
+def get_rel_src_pos(doas, dists, dovs=None, translations=None, rotations=None):
     """Determine the relative position of the acoustic sources
 
     Determine the relative position of the acoustic sources using the given
@@ -38,11 +38,20 @@ def get_rel_src_pos(doas, dists, translations=None, rotations=None):
             Array containing DoAs.
         dists (ndarray (shape=(n_srcs, n_nodes))):
             Array containing source node distances.
+        dovs (ndarray (shape=(n_srcs, n_nodes))):
+            Array containing Direction of Voices (DoVs).
         translations (ndarray (shape=(2, n_srcs, n_nodes))):
             Array containing the relative translations with the initial point
         rotations (ndarray (shape=(n_srcs, n_nodes))):
             Array containing the rotations.
     """
+    if dovs is not None:
+        # TODO: Implement DoVs
+        # for DoVs[i, j]: i-th node observed by j-th node, we need to convert it back to DoAs
+        # for DoVs[i, :], the correponding node is source2node[i], which is a mapping list with a shape of [n_srcs]
+        # Accordingly we have new target src_pos [n_srcs, n_nodes, n_nodes]
+        # We have source2node which is a mapping list with a shape of [n_srcs]
+        raise NotImplementedError('Direction of Voices (DoVs) are not supported yet')
     if translations is not None and rotations is not None:
         translations = translations[:, :, :2].transpose(2, 0, 1)
         cum_translation = np.cumsum(translations, axis=1)
@@ -52,13 +61,6 @@ def get_rel_src_pos(doas, dists, translations=None, rotations=None):
         dir_vects = np.asarray([np.cos(doas), np.sin(doas)])
         src_pos = dists[None, :] * dir_vects
         src_pos = src_pos + cum_translation
-        # # print()
-        # n_srcs, n_nodes = doas.shape
-        # doas = doas.reshape(-1); dists = dists.reshape(-1); cum_translation = cum_translation.reshape(2, -1); cum_rotation = cum_rotation.reshape(-1)
-        # distance_z_to_y, azimuth_z_to_y = calculate_azimuth_distance(dists, doas, -cum_translation, 0)
-        # print(distance_z_to_y.shape, azimuth_z_to_y.shape)
-        # doas = azimuth_z_to_y.reshape(n_srcs, n_nodes); dists = distance_z_to_y.reshape(n_srcs, n_nodes)
-        # return get_rel_src_pos(doas, dists)
         return src_pos
     else:
         dir_vects = np.asarray([np.cos(doas), np.sin(doas)])
@@ -198,11 +200,20 @@ def est_geometry(doas, dists, translations, rotations, outlier_percent=.5, conv_
             If True variance dependent weights are used for
             source localization.
     """
+    # print(doas.shape, dists.shape, translations.shape, rotations.shape)
+    if len(doas.shape) == 3 and len(dists.shape) == 3: # [n_srcs, overlap, n_nodes]
+        n_srcs, overlap, n_nodes = doas.shape
+        doas = doas.reshape(-1, n_nodes); dists = dists.reshape(-1, n_nodes) # [n_srcs*overlap, n_nodes]
+        # translations, rotations [n_srcs, n_nodes], repeat them to [n_srcs*overlap, n_nodes]
+        translations = np.repeat(translations, overlap, axis=0)
+        rotations = np.repeat(rotations, overlap, axis=0)
+
     n_srcs, n_nodes = doas.shape
-    rel_src_pos = get_rel_src_pos(doas, dists, translations, rotations) # (2, n_srcs, n_nodes)
+    rel_src_pos = get_rel_src_pos(doas, dists, None, translations, rotations) # (2, n_srcs, n_nodes)
 
     src_pos = rel_src_pos[:, :, 0]
-    node_pos, node_orients = dsm_calib(rel_src_pos, src_pos)
+    # TODO: implement confidence/ mask for the predictions
+    node_pos, node_orients = dsm_calib(rel_src_pos, src_pos, weights=None)
     src_pos, src_pos_candidates = \
         src_localization(rel_src_pos, node_pos, node_orients)
     devs = np.linalg.norm(

@@ -22,12 +22,16 @@ def get_source_positions(scenario):
     return src_positions
 
 
+def get_estimates(scenario):
+    assert 'observations' in scenario.keys()
+    assert 'estimates' in scenario['observations'].keys()
+    return scenario['observations']['estimates']
+
 def get_doas(scenario, key='estimates'):
     assert 'observations' in scenario.keys()
     assert key in scenario['observations'].keys()
     assert ('doas' in scenario['observations'][key].keys())
     return np.asarray(scenario['observations'][key]['doas'])
-
 
 def get_sn_dists(scenario, key='estimates'):
     assert 'observations' in scenario.keys()
